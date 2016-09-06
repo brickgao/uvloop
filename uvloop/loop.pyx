@@ -73,18 +73,14 @@ cdef class Loop:
         self._timers = set()
         self._polls = dict()
 
-        IF UNAME_SYSNAME == "Windows":
-            # TODO(iceboy): Signal equivalence on windows?
-            pass
-        ELSE:
-            if MAIN_THREAD_ID == PyThread_get_thread_ident():  # XXX
-                self.py_signals = SignalsStack()
-                self.uv_signals = SignalsStack()
+        if MAIN_THREAD_ID == PyThread_get_thread_ident():  # XXX
+            self.py_signals = SignalsStack()
+            self.uv_signals = SignalsStack()
 
-                self.py_signals.save()
-            else:
-                self.py_signals = None
-                self.uv_signals = None
+            self.py_signals.save()
+        else:
+            self.py_signals = None
+            self.uv_signals = None
 
         self._executing_py_code = 0
 
@@ -223,12 +219,8 @@ cdef class Loop:
         self._stop(SystemExit())
 
     cdef _check_sigint(self):
-        IF UNAME_SYSNAME == "Windows":
-            # TODO(iceboy): __signal_set_sigint() on windows?
-            pass
-        ELSE:
-            self.uv_signals.save()
-            __signal_set_sigint()
+        self.uv_signals.save()
+        __signal_set_sigint()
 
     cdef _on_idle(self):
         cdef:
@@ -290,13 +282,9 @@ cdef class Loop:
     cdef __run(self, uv.uv_run_mode mode):
         global __main_loop__
 
-        IF UNAME_SYSNAME == "Windows":
-            # TODO(iceboy): Signal equivalence on windows?
-            pass
-        ELSE:
-            if self.py_signals is not None:
-                # self.py_signals is not None only for the main thread
-                __main_loop__ = self
+        if self.py_signals is not None:
+            # self.py_signals is not None only for the main thread
+            __main_loop__ = self
 
         self._executing_py_code = 0
         # Although every UVHandle holds a reference to the loop,
@@ -309,14 +297,10 @@ cdef class Loop:
         Py_DECREF(self)
         self._executing_py_code = 1
 
-        IF UNAME_SYSNAME == "Windows":
-            # TODO(iceboy): Signal equivalence on windows?
-            pass
-        ELSE:
-            if self.py_signals is not None:
-                # self.py_signals is not None only for the main thread
-                self.py_signals.restore()
-                __main_loop__ = None
+        if self.py_signals is not None:
+            # self.py_signals is not None only for the main thread
+            self.py_signals.restore()
+            __main_loop__ = None
 
         if err < 0:
             raise convert_error(err)
@@ -2409,8 +2393,7 @@ include "handles/udp.pyx"
 include "server.pyx"
 
 IF UNAME_SYSNAME == "Windows":
-    # TODO(iceboy): Signal equivalence on windows?
-    pass
+    include "os_signal_win.pyx"
 ELSE:
     include "os_signal.pyx"
 
